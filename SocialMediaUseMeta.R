@@ -1201,7 +1201,56 @@ cat(sprintf("Level-2 (within-study)  sigma2: %.4f\n", res_base$sigma2[2]))
 cat(sprintf("Level-3 (between-study) sigma2: %.4f\n", res_base$sigma2[1]))
 cat(sprintf("Overall heterogeneity I2 approx: %.1f%%\n", I2_total * 100))
 
+#Bias analysis
+library(metafor)
 
+## 0. Precision predictor
+df$sei <- sqrt(df$vi)   # standard error of each effect size
+
+## ---- 1. Funnel plot (visual asymmetry check) ----
+funnel(res_base,
+       level   = c(90, 95, 99),
+       shade   = c("white", "gray55", "gray75"),
+       refline = 0,
+       xlab    = "Effect size (d_unified)")
+
+## ---- 2. Multilevel Egger's test ----
+## Add SE as a moderator; a significant slope = funnel asymmetry
+egger_ml <- rma.mv(
+  yi     = d_unified,
+  V      = vi,
+  mods   = ~ sei,
+  random = ~ 1 | cluster_id / es_id,
+  data   = df,
+  method = "REML"
+)
+summary(egger_ml)
+## -> look at the 'sei' row: if p < .05, evidence of small-study effects/asymmetry
+
+## ---- 3. PET-PEESE (bias-adjusted estimate) ----
+## PET: regress on SE; intercept = effect estimated at SE = 0
+pet <- rma.mv(d_unified, vi, mods = ~ sei,
+              random = ~ 1 | cluster_id / es_id, data = df, method = "REML")
+
+## PEESE: regress on variance; use when PET intercept is significant
+peese <- rma.mv(d_unified, vi, mods = ~ vi,
+                random = ~ 1 | cluster_id / es_id, data = df, method = "REML")
+
+summary(pet)
+summary(peese)
+## Conditional rule: if the PET intercept is significant (p < .05),
+## report the PEESE intercept as the bias-corrected effect; otherwise report PET intercept.
+library(metafor)
+library(weightr)
+
+## 1. Aggregate to one effect size per study/cluster (restores independence)
+df_es  <- escalc(measure = "SMD", yi = d_unified, vi = vi, data = df)  # tag as escalc
+df_agg <- aggregate(df_es, cluster = cluster_id, rho = 0.6)            # assumed within-study r
+
+## 2. Vevea–Hedges selection model
+## steps = one-tailed p cutpoint at .025 (i.e., two-tailed .05) -> 3-parameter model
+sel <- weightfunct(effect = df_agg$yi, v = df_agg$vi, steps = c(0.025, 1.00))
+sel
 # =============================================================================
 # Model 2 and 3: Direction subgroup model
 # =============================================================================
