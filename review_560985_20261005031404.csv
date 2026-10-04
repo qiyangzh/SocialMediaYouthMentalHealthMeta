@@ -1,0 +1,3 @@
+Reviewer A,Reviewer B,"A Include, B Include","A Include, B Exclude","A Exclude, B Include","A Exclude, B Exclude",Proportionate Agreement,Yes Probability,No Probability,Random Agreement Probability,Cohen's Kappa
+Cameron Tan,Yuan Sui,11,3,2,7,0.78261,0.34405,0.17013,0.51418,0.55253
+Qiyang Zhang,Yuan Sui,0,1,0,0,0.0,0.0,0.0,0.0,0.0
